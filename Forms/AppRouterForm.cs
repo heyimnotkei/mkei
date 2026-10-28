@@ -15,12 +15,21 @@ namespace MKei
     {
         private static AppRouterForm? _openInstance;
 
-        public static bool CanRefreshRouting => _openInstance is { IsDisposed: false };
-
-        public static void RefreshRouting()
+        public static void RefreshRouting(bool showRouter = true)
         {
-            if (CanRefreshRouting)
-                _openInstance!.RefreshRoutedApps();
+            bool createdForRefresh = _openInstance == null || _openInstance.IsDisposed;
+            if (showRouter)
+                OpenSingleInstance();
+            else if (createdForRefresh)
+                _openInstance = new AppRouterForm();
+
+            _openInstance!.RefreshRoutedApps(showErrors: showRouter);
+
+            if (!showRouter && createdForRefresh)
+            {
+                _openInstance.Dispose();
+                _openInstance = null;
+            }
         }
 
         /// <summary>
@@ -29,13 +38,16 @@ namespace MKei
         ///
         ///     openAppsButton.Click += (s, e) => AppRouterForm.OpenSingleInstance();
         ///
-        /// If a window is already open, this does nothing - per spec, it does
-        /// NOT bring the existing window to the front, it's just a no-op.
         /// </summary>
         public static void OpenSingleInstance()
         {
             if (_openInstance != null && !_openInstance.IsDisposed)
+            {
+                _openInstance.Show();
+                _openInstance.WindowState = FormWindowState.Normal;
+                _openInstance.Activate();
                 return;
+            }
 
             _openInstance = new AppRouterForm();
             _openInstance.FormClosed += (s, e) => _openInstance = null;
@@ -462,12 +474,12 @@ namespace MKei
             RefreshStatusForSelection();
         }
 
-        void RefreshRoutedApps()
+        void RefreshRoutedApps(bool showErrors = true)
         {
             var cable = FindCableDevice();
             if (cable == null)
             {
-                MessageBox.Show("VB Audio Cable not found");
+                if (showErrors) MessageBox.Show("VB Audio Cable not found");
                 return;
             }
 
@@ -489,7 +501,7 @@ namespace MKei
                 }
             }
 
-            if (failures.Count > 0)
+            if (showErrors && failures.Count > 0)
                 MessageBox.Show(string.Join("\n\n", failures), "Route refresh failed for some apps");
 
             RefreshStatusForSelection();

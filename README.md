@@ -1,6 +1,6 @@
 # MKei
 
-MKei is a Windows audio app for capturing and playing audio with mono processing, and routing audio from individual applications. The current app version is **MKei 3.1.0**.
+MKei is a Windows audio app for capturing and playing audio with mono processing, and routing audio from individual applications. The current app version is **MKei 3.1.1**.
 
 ## Requirements
 

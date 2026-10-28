@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <ApplicationIcon>Assets\mono.ico</ApplicationIcon>
     <AssemblyName>MKei</AssemblyName>
-    <Version>3.1.0</Version>
+    <Version>3.1.1</Version>
     <RootNamespace>MKei</RootNamespace>
   </PropertyGroup>
   <ItemGroup>

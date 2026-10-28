@@ -36,15 +36,31 @@ namespace MKei
         private bool _minimizeToTray = true;
         private ContextMenuStrip? _settingsMenu;
         private const string SettingsKey = @"Software\MKei";
+        private readonly System.Windows.Forms.Timer _autoRefreshTimer = new();
+        private bool _autoRefreshEnabled;
+        private int _autoRefreshHours;
+        private int _autoRefreshMinutes;
+        private string? _savedInputId;
+        private string? _savedOutputId;
+        private bool _settingsReady;
 
         public MainForm()
         {
             InitializeComponent();
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application;
             _minimizeToTray = LoadMinimizeToTrayPreference();
+            LoadPlaybackPreferences();
             WindowChrome.Apply(this, Theme.Window, Theme.Ink, Theme.CardBorder);
             LoadDevices();
-            chkMono.Checked = true;
+            chkMono.Checked = _forceMono;
+            trackVolume.Value = (int)Math.Round(Math.Sqrt(_volume) * 100);
+            lblVolume.Text = $"VOLUME  ·  {trackVolume.Value}%";
+            _volume = (float)Math.Pow(trackVolume.Value / 100f, 2);
+            cmbInput.SelectedIndexChanged += (_, _) => SavePlaybackPreferences();
+            cmbOutput.SelectedIndexChanged += (_, _) => SavePlaybackPreferences();
+            _settingsReady = true;
+            ConfigureAutoRefreshTimer();
+            _autoRefreshTimer.Tick += (_, _) => AppRouterForm.RefreshRouting(showRouter: false);
             statusPill.SetState("Stopped", Theme.InkFaint);
             InitializeTrayIcon();
         }
@@ -69,7 +85,6 @@ namespace MKei
 
             var refreshRouting = new ToolStripMenuItem("Refresh", null, (s, e) => AppRouterForm.RefreshRouting());
             _trayMenu.Items.Add(refreshRouting);
-            _trayMenu.Opening += (s, e) => refreshRouting.Enabled = AppRouterForm.CanRefreshRouting;
 
             _trayMenu.Items.Add("Exit", null, (s, e) =>
             {
@@ -105,6 +120,42 @@ namespace MKei
             catch { return true; }
         }
 
+        private void LoadPlaybackPreferences()
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(SettingsKey);
+                if (key == null) return;
+                _forceMono = Convert.ToInt32(key.GetValue("ForceMono", 1)) != 0;
+                _volume = Math.Clamp(Convert.ToInt32(key.GetValue("Volume", 100)), 0, 100) / 100f;
+                _savedInputId = key.GetValue("InputDevice") as string;
+                _savedOutputId = key.GetValue("OutputDevice") as string;
+                _autoRefreshEnabled = Convert.ToInt32(key.GetValue("AutoRefreshEnabled", 0)) != 0;
+                _autoRefreshHours = Math.Clamp(Convert.ToInt32(key.GetValue("AutoRefreshHours", 0)), 0, 23);
+                _autoRefreshMinutes = Math.Clamp(Convert.ToInt32(key.GetValue("AutoRefreshMinutes", 0)), 0, 59);
+                if (_autoRefreshHours == 0 && _autoRefreshMinutes == 0)
+                    _autoRefreshEnabled = false;
+            }
+            catch { }
+        }
+
+        private void SavePlaybackPreferences()
+        {
+            if (!_settingsReady) return;
+            try
+            {
+                using var key = Registry.CurrentUser.CreateSubKey(SettingsKey);
+                key?.SetValue("ForceMono", chkMono.Checked ? 1 : 0, RegistryValueKind.DWord);
+                key?.SetValue("Volume", trackVolume.Value, RegistryValueKind.DWord);
+                key?.SetValue("InputDevice", (cmbInput.SelectedItem as DevItem)?.Device.ID ?? "", RegistryValueKind.String);
+                key?.SetValue("OutputDevice", (cmbOutput.SelectedItem as DevItem)?.Device.ID ?? "", RegistryValueKind.String);
+                key?.SetValue("AutoRefreshEnabled", _autoRefreshEnabled ? 1 : 0, RegistryValueKind.DWord);
+                key?.SetValue("AutoRefreshHours", _autoRefreshHours, RegistryValueKind.DWord);
+                key?.SetValue("AutoRefreshMinutes", _autoRefreshMinutes, RegistryValueKind.DWord);
+            }
+            catch { }
+        }
+
         private void BtnSettings_Click(object? sender, EventArgs e)
         {
             _settingsMenu ??= CreateSettingsMenu();
@@ -126,9 +177,79 @@ namespace MKei
             close.Click += (_, _) => SetMinimizeToTray(false, minimize, close);
             menu.Items.Add(minimize);
             menu.Items.Add(close);
+
+            menu.Items.Add(new ToolStripSeparator());
+            var autoRefresh = new ToolStripMenuItem("Auto-refresh") { Checked = _autoRefreshEnabled };
+            autoRefresh.Click += (_, _) =>
+            {
+                if (!_autoRefreshEnabled && _autoRefreshHours == 0 && _autoRefreshMinutes == 0)
+                {
+                    SetAutoRefreshInterval(enableAfter: true);
+                    return;
+                }
+                _autoRefreshEnabled = !_autoRefreshEnabled;
+                autoRefresh.Checked = _autoRefreshEnabled;
+                ConfigureAutoRefreshTimer();
+                SavePlaybackPreferences();
+            };
+            var interval = new ToolStripMenuItem("Set interval…", null, (_, _) => SetAutoRefreshInterval());
+            menu.Items.Add(autoRefresh);
+            menu.Items.Add(interval);
             UpdateChecks();
             menu.Opening += (_, _) => UpdateChecks();
             return menu;
+        }
+
+        private void SetAutoRefreshInterval(bool enableAfter = false)
+        {
+            using var dialog = new Form
+            {
+                Text = "Auto-refresh interval",
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                StartPosition = FormStartPosition.CenterParent,
+                ClientSize = new Size(300, 112),
+                MinimizeBox = false,
+                MaximizeBox = false,
+                ShowInTaskbar = false,
+                BackColor = Theme.Window,
+                ForeColor = Theme.Ink,
+                Font = Theme.Body
+            };
+            var hours = new NumericUpDown { Minimum = 0, Maximum = 23, Value = _autoRefreshHours, Location = new Point(20, 20), Width = 70 };
+            var minutes = new NumericUpDown { Minimum = 0, Maximum = 59, Value = _autoRefreshMinutes, Location = new Point(150, 20), Width = 70 };
+            dialog.Controls.Add(new Label { Text = "Hours", AutoSize = true, Location = new Point(95, 23), ForeColor = Theme.Ink });
+            dialog.Controls.Add(new Label { Text = "Minutes", AutoSize = true, Location = new Point(225, 23), ForeColor = Theme.Ink });
+            dialog.Controls.Add(hours);
+            dialog.Controls.Add(minutes);
+            var ok = new Button { Text = "OK", DialogResult = DialogResult.OK, Location = new Point(190, 70), Width = 80 };
+            dialog.Controls.Add(ok);
+            dialog.AcceptButton = ok;
+            if (dialog.ShowDialog(this) != DialogResult.OK) return;
+            _autoRefreshHours = (int)hours.Value;
+            _autoRefreshMinutes = (int)minutes.Value;
+            if (enableAfter && (_autoRefreshHours > 0 || _autoRefreshMinutes > 0))
+                _autoRefreshEnabled = true;
+            if (_autoRefreshHours == 0 && _autoRefreshMinutes == 0)
+                _autoRefreshEnabled = false;
+            ConfigureAutoRefreshTimer();
+            SavePlaybackPreferences();
+            _settingsMenu?.Close();
+            _settingsMenu?.Dispose();
+            _settingsMenu = null;
+        }
+
+        private void ConfigureAutoRefreshTimer()
+        {
+            long milliseconds = ((long)_autoRefreshHours * 60 + _autoRefreshMinutes) * 60_000;
+            if (_autoRefreshEnabled && milliseconds > 0)
+            {
+                _autoRefreshTimer.Interval = (int)Math.Min(milliseconds, int.MaxValue);
+                _autoRefreshTimer.Start();
+            }
+            else
+            {
+                _autoRefreshTimer.Stop();
+            }
         }
 
         private void SetMinimizeToTray(bool value, ToolStripMenuItem minimize, ToolStripMenuItem close)
@@ -165,6 +286,11 @@ namespace MKei
             if (defOut != null)
                 cmbOutput.SelectedItem = cmbOutput.Items.Cast<DevItem>().FirstOrDefault(x => x.Device.ID == defOut.ID)
                                          ?? (cmbOutput.Items.Count > 0 ? cmbOutput.Items[0] : null);
+
+            if (_savedInputId != null)
+                cmbInput.SelectedItem = cmbInput.Items.Cast<DevItem>().FirstOrDefault(x => x.Device.ID == _savedInputId) ?? cmbInput.SelectedItem;
+            if (_savedOutputId != null)
+                cmbOutput.SelectedItem = cmbOutput.Items.Cast<DevItem>().FirstOrDefault(x => x.Device.ID == _savedOutputId) ?? cmbOutput.SelectedItem;
         }
 
         private void btnStart_Click(object sender, EventArgs e)
@@ -299,12 +425,14 @@ namespace MKei
         private void chkMono_CheckedChanged(object sender, EventArgs e)
         {
             _forceMono = chkMono.Checked;
+            SavePlaybackPreferences();
         }
 
         private void trackVolume_Scroll(object sender, EventArgs e)
         {
             _volume = (float)Math.Pow(trackVolume.Value / 100f, 2);
             lblVolume.Text = $"VOLUME  ·  {trackVolume.Value}%";
+            SavePlaybackPreferences();
         }
 
         private void BtnCurrentApps_Click(object sender, EventArgs e)
@@ -349,6 +477,7 @@ namespace MKei
             }
             _trayIcon?.Dispose();
             _settingsMenu?.Dispose();
+            _autoRefreshTimer.Dispose();
 
             StopAudio();
 
