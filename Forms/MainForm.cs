@@ -67,6 +67,10 @@ namespace MKei
                 Activate();
             });
 
+            var refreshRouting = new ToolStripMenuItem("Refresh", null, (s, e) => AppRouterForm.RefreshRouting());
+            _trayMenu.Items.Add(refreshRouting);
+            _trayMenu.Opening += (s, e) => refreshRouting.Enabled = AppRouterForm.CanRefreshRouting;
+
             _trayMenu.Items.Add("Exit", null, (s, e) =>
             {
                 _actuallyClosing = true;

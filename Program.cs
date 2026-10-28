@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
@@ -31,36 +30,29 @@ namespace MKei
 
         private static void ActivateRunningInstance()
         {
-            foreach (var process in Process.GetProcessesByName("MKei"))
+            IntPtr mainWindow = IntPtr.Zero;
+            IntPtr routerWindow = IntPtr.Zero;
+            EnumWindows((window, _) =>
             {
-                IntPtr mainWindow = IntPtr.Zero;
-                IntPtr routerWindow = IntPtr.Zero;
-                EnumWindows((window, _) =>
+                var title = new StringBuilder(256);
+                GetWindowText(window, title, title.Capacity);
+                if (title.ToString() == "Current Apps")
                 {
-                    GetWindowThreadProcessId(window, out uint processId);
-                    if (processId != process.Id)
-                        return true;
+                    routerWindow = window;
+                    return false;
+                }
 
-                    var title = new StringBuilder(256);
-                    GetWindowText(window, title, title.Capacity);
-                    if (title.ToString() == "Current Apps")
-                    {
-                        routerWindow = window;
-                        return false;
-                    }
-
+                if (title.ToString() == "MKei")
                     mainWindow = window;
-                    return true;
-                }, IntPtr.Zero);
+                return true;
+            }, IntPtr.Zero);
 
-                var windowToActivate = routerWindow != IntPtr.Zero ? routerWindow : mainWindow;
-                if (windowToActivate == IntPtr.Zero)
-                    continue;
-
-                ShowWindow(windowToActivate, 9); // SW_RESTORE
-                SetForegroundWindow(windowToActivate);
+            var windowToActivate = routerWindow != IntPtr.Zero ? routerWindow : mainWindow;
+            if (windowToActivate == IntPtr.Zero)
                 return;
-            }
+
+            ShowWindow(windowToActivate, 9); // SW_RESTORE
+            SetForegroundWindow(windowToActivate);
         }
 
         private delegate bool EnumWindowsProc(IntPtr window, IntPtr lParam);
@@ -70,9 +62,6 @@ namespace MKei
 
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         private static extern int GetWindowText(IntPtr window, StringBuilder text, int maxCount);
-
-        [DllImport("user32.dll")]
-        private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
 
         [DllImport("user32.dll")]
         private static extern bool ShowWindow(IntPtr window, int command);

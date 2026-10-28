@@ -30,7 +30,7 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1
 
 The script can also be started by its full path from another directory.
 
-The script publishes a self-contained Windows x64 executable to `publish/` and archives every successful build in `releases/` as `MKei <10-digit-number>.exe`. Existing archives are retained and the `releases/` folder is ignored by Git.
+The script publishes a self-contained Windows x64 executable to `publish/` and archives every successful build in `releases/` as `MKei <10-digit-number>.exe`. Pass `-BuildId` to replace a specific archive, for example `powershell -ExecutionPolicy Bypass -File .\build.ps1 -BuildId 1983527565`. The `releases/` folder is ignored by Git.
 
 ## Source
 

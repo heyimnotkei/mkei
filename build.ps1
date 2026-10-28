@@ -1,3 +1,5 @@
+param([int]$BuildId = 0)
+
 $ErrorActionPreference = 'Stop'
 
 $projName = 'MKei'
@@ -30,12 +32,20 @@ if (-not (Test-Path $publishedExe)) {
 }
 
 New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
-do {
-    $buildId = Get-Random -Minimum 1000000000 -Maximum 2147483647
-    $releaseExe = Join-Path $releaseDir "$projName $buildId.exe"
-} while (Test-Path $releaseExe)
+$overwriteExisting = $BuildId -ne 0
+if (-not $overwriteExisting) {
+    do {
+        $BuildId = Get-Random -Minimum 1000000000 -Maximum 2147483647
+        $releaseExe = Join-Path $releaseDir "$projName $BuildId.exe"
+    } while (Test-Path $releaseExe)
+} else {
+    if ($BuildId -lt 1000000000 -or $BuildId -ge 2147483647) {
+        throw 'BuildId must be between 1000000000 and 2147483646.'
+    }
+    $releaseExe = Join-Path $releaseDir "$projName $BuildId.exe"
+}
 
-[System.IO.File]::Copy($publishedExe, $releaseExe, $false)
+[System.IO.File]::Copy($publishedExe, $releaseExe, $overwriteExisting)
 
 Write-Host "Build complete. Executable: $publishedExe"
 Write-Host "Build archive: $releaseExe"

@@ -15,6 +15,14 @@ namespace MKei
     {
         private static AppRouterForm? _openInstance;
 
+        public static bool CanRefreshRouting => _openInstance is { IsDisposed: false };
+
+        public static void RefreshRouting()
+        {
+            if (CanRefreshRouting)
+                _openInstance!.RefreshRoutedApps();
+        }
+
         /// <summary>
         /// Opens this window, but only one at a time. Call this from your main
         /// form's button handler instead of `new AppRouterForm().Show()`:
@@ -104,19 +112,6 @@ namespace MKei
             appList.DrawItem += AppList_DrawItem;
             appList.DrawSubItem += AppList_DrawSubItem;
             appList.SelectedIndexChanged += AppSelected;
-            appList.MouseDown += (s, e) =>
-            {
-                if (e.Button == MouseButtons.Right && appList.HitTest(e.Location).Item is { } item && !item.Selected)
-                {
-                    appList.SelectedItems.Clear();
-                    item.Selected = true;
-                }
-            };
-            var contextMenu = new ContextMenuStrip();
-            contextMenu.Items.Add("Refresh", null, RefreshSelectedRouting);
-            contextMenu.Opening += (s, e) =>
-                contextMenu.Items[0].Enabled = appList.SelectedItems.Count > 0;
-            appList.ContextMenuStrip = contextMenu;
             card.Controls.Add(appList);
 
             var divider = new Panel { BackColor = Theme.Divider, Location = new Point(20, 276), Size = new Size(604, 1) };
@@ -467,7 +462,7 @@ namespace MKei
             RefreshStatusForSelection();
         }
 
-        void RefreshSelectedRouting(object? sender, EventArgs e)
+        void RefreshRoutedApps()
         {
             var cable = FindCableDevice();
             if (cable == null)
@@ -477,11 +472,12 @@ namespace MKei
             }
 
             var failures = new List<string>();
-            foreach (var app in appList.SelectedItems.Cast<ListViewItem>().Select(i => (AudioApp)i.Tag))
-            {
-                if (!IsRoutedToCable(app.ProcessId, cable))
-                    continue;
+            var routedApps = appList.Items.Cast<ListViewItem>()
+                .Select(i => (AudioApp)i.Tag)
+                .Where(app => IsRoutedToCable(app.ProcessId, cable));
 
+            foreach (var app in routedApps)
+            {
                 try
                 {
                     router.RestoreProcess((int)app.ProcessId);
