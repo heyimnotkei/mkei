@@ -58,8 +58,8 @@ namespace MKei
         private void InitializeTrayIcon()
         {
             _trayMenu = new ContextMenuStrip();
-        
-            _trayMenu.Items.Add("Open",null, (s, e) =>
+
+            _trayMenu.Items.Add("Open", null, (s, e) =>
             {
                 Show();
                 WindowState = FormWindowState.Normal;
@@ -81,14 +81,14 @@ namespace MKei
                 Visible = true,
                 ContextMenuStrip = _trayMenu
             };
-            
-            _trayIcon.DoubleClick += (s,e) =>
+
+            _trayIcon.DoubleClick += (s, e) =>
             {
                 Show();
                 WindowState = FormWindowState.Normal;
                 ShowInTaskbar = true;
                 Activate();
-            }; 
+            };
         }
 
         private static bool LoadMinimizeToTrayPreference()
@@ -240,7 +240,7 @@ namespace MKei
                         _buffer.AddSamples(outBytes, 0, outBytes.Length);
                     }
                 }
-                else 
+                else
                 {
                     if (_fmt.Encoding == WaveFormatEncoding.IeeeFloat)
                     {
@@ -340,7 +340,7 @@ namespace MKei
                     "MKei",
                     "Still running in system tray.",
                     ToolTipIcon.Info);
-                
+
                 return;
             }
             _trayIcon?.Dispose();

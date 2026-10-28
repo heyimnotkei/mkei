@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using System.Windows.Forms;
+
 using NAudio.CoreAudioApi;
 
 namespace MKei
@@ -88,10 +89,10 @@ namespace MKei
             appList.View = View.Details;
             appList.FullRowSelect = true;
             appList.MultiSelect = true; // some apps (Apple Music + AMPLibraryAgent,
-                                         // for example) run their actual audio session
-                                         // in a helper process separate from the one
-                                         // shown as the "main" app - selecting and
-                                         // toggling both together routes all of them.
+                                        // for example) run their actual audio session
+                                        // in a helper process separate from the one
+                                        // shown as the "main" app - selecting and
+                                        // toggling both together routes all of them.
             appList.SmallImageList = icons;
             appList.HeaderStyle = ColumnHeaderStyle.None;
             appList.BorderStyle = BorderStyle.None;
@@ -193,98 +194,98 @@ namespace MKei
 
                 foreach (var session in sessions)
                 {
-                try
-                {
-                    uint pid =
-                        session.GetProcessID;
-
-
-                    if(pid == 0)
-                        continue;
-
-                    if(!seenProcessIds.Add(pid))
-                        continue; // already listed from another device
-
-
-                    Process process;
-
-
                     try
                     {
-                        process =
-                            Process.GetProcessById(
-                                (int)pid);
-                    }
-                    catch
-                    {
-                        continue;
-                    }
+                        uint pid =
+                            session.GetProcessID;
 
 
+                        if (pid == 0)
+                            continue;
 
-                    string displayName =
-                        process.ProcessName;
-
-
-                    try
-                    {
-                        displayName =
-                            FileVersionInfo
-                            .GetVersionInfo(
-                                process.MainModule.FileName)
-                            .FileDescription;
-                    }
-                    catch
-                    {
-
-                    }
+                        if (!seenProcessIds.Add(pid))
+                            continue; // already listed from another device
 
 
-
-                    try
-                    {
-                        Icon? icon =
-                            Icon.ExtractAssociatedIcon(
-                                process.MainModule.FileName);
+                        Process process;
 
 
-                        if(icon != null)
+                        try
                         {
-                            icons.Images.Add(
-                                process.ProcessName,
-                                icon);
+                            process =
+                                Process.GetProcessById(
+                                    (int)pid);
                         }
+                        catch
+                        {
+                            continue;
+                        }
+
+
+
+                        string displayName =
+                            process.ProcessName;
+
+
+                        try
+                        {
+                            displayName =
+                                FileVersionInfo
+                                .GetVersionInfo(
+                                    process.MainModule.FileName)
+                                .FileDescription;
+                        }
+                        catch
+                        {
+
+                        }
+
+
+
+                        try
+                        {
+                            Icon? icon =
+                                Icon.ExtractAssociatedIcon(
+                                    process.MainModule.FileName);
+
+
+                            if (icon != null)
+                            {
+                                icons.Images.Add(
+                                    process.ProcessName,
+                                    icon);
+                            }
+                        }
+                        catch
+                        {
+
+                        }
+
+
+
+                        ListViewItem item =
+                            new(displayName);
+
+
+                        item.ImageKey =
+                            process.ProcessName;
+
+
+                        item.Tag =
+                            new AudioApp
+                            {
+                                Name = displayName,
+                                ProcessId = pid
+                            };
+
+
+                        appList.Items.Add(item);
+
                     }
                     catch
                     {
 
                     }
-
-
-
-                    ListViewItem item =
-                        new(displayName);
-
-
-                    item.ImageKey =
-                        process.ProcessName;
-
-
-                    item.Tag =
-                        new AudioApp
-                        {
-                            Name = displayName,
-                            ProcessId = pid
-                        };
-
-
-                    appList.Items.Add(item);
-
-                }
-                catch
-                {
-
-                }
                 }
             }
 
@@ -317,7 +318,7 @@ namespace MKei
 
         void AppSelected(object? sender, EventArgs e)
         {
-            if(appList.SelectedItems.Count == 0)
+            if (appList.SelectedItems.Count == 0)
                 return;
 
 
@@ -383,13 +384,13 @@ namespace MKei
 
         void Toggle_Click(object? sender, EventArgs e)
         {
-            if(appList.SelectedItems.Count == 0)
+            if (appList.SelectedItems.Count == 0)
                 return;
 
 
             var cable = FindCableDevice();
 
-            if(cable == null)
+            if (cable == null)
             {
                 MessageBox.Show(
                     "VB Audio Cable not found");
@@ -501,9 +502,9 @@ namespace MKei
 
         class AudioApp
         {
-            public string Name {get;set;} = "";
+            public string Name { get; set; } = "";
 
-            public uint ProcessId {get;set;}
+            public uint ProcessId { get; set; }
         }
 
     }

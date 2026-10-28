@@ -1,6 +1,6 @@
 # MKei Source Handoff
 
-**Updated:** 2026-09-30  
+**Updated:** 2026-10-28
 **Project:** MKei / Mono APP  
 **Platform:** Windows 11  
 **Stack:** C#, WinForms, .NET 8, NAudio 2.2.1
@@ -14,20 +14,20 @@ MKei provides Windows audio device capture and playback with mono processing, al
 - Project: `MKei.csproj`
 - Target: `net8.0-windows10.0.22621.0`
 - Output: Windows GUI application (`WinExe`)
-- App icon: `mono.ico` (`ApplicationIcon`)
+- App icon: `Assets/mono.ico` (`ApplicationIcon`)
 - Audio dependency: NAudio 2.2.1
 - Build: `dotnet build MKei.csproj`
 - Publish helper: `build.ps1` (inspect its current parameters before publishing)
 
 ## Main source files
 
-- `MainForm.cs`: capture/playback lifecycle, mono downmix, volume, tray behavior, and close preference.
-- `MainForm_Designer.cs`: main window layout and controls.
-- `UiControls.cs`: themed controls and ComboBox styling.
-- `AppRouterForm.cs`: running application/audio-session UI and per-app routing controls.
-- `AudioRouter.cs`, `AudioPolicyConfig.cs`: routing/policy implementation.
-- `Processloopbackcapture.cs`: process loopback capture implementation.
-- `Theme.cs`, `WindowChrome.cs`: visual theme and window chrome.
+- `Forms/MainForm.cs`: capture/playback lifecycle, mono downmix, volume, tray behavior, and close preference.
+- `Forms/MainForm.Designer.cs`: main window layout and controls.
+- `Forms/AppRouterForm.cs`: running application/audio-session UI and per-app routing controls.
+- `Audio/AudioRouter.cs`: audio-session lookup and per-process routing operations.
+- `Audio/ProcessLoopbackCapture.cs`: process loopback capture implementation.
+- `Interop/AudioPolicyConfig.cs`, `Interop/WindowChrome.cs`: Windows audio policy and native window integration.
+- `UI/Theme.cs`, `UI/UiControls.cs`: visual theme and custom controls.
 - `Program.cs`: WinForms startup.
 
 ## Latest completed UI changes
@@ -37,7 +37,7 @@ MKei provides Windows audio device capture and playback with mono processing, al
   - **Minimize to system tray** (default)
   - **Fully close MKei**
 - The selected preference is stored at `HKCU\Software\MKei`, DWORD `MinimizeToTray` (`1` = hide to tray; `0` = exit on user close).
-- The form uses the executable's associated icon. The project embeds `mono.ico` as the application icon. The Windows title bar caption is blank; the in-window heading remains “MKei.”
+- The form uses the executable's associated icon. The project embeds `Assets/mono.ico` as the application icon. The Windows title bar caption is blank; the in-window heading remains “MKei.”
 - The main form was made taller and its content card moved down to fit Settings.
 
 ## Build status
@@ -50,7 +50,7 @@ No runtime UI test was performed for this change. Confirm these behaviors when l
 2. Settings changes remain selected after restarting MKei.
 3. Close-to-tray hides the main window and the tray Open action restores it.
 4. Fully close exits the application and stops audio.
-5. The title bar shows the `mono.ico` icon and no “MKei” caption.
+5. The title bar shows the `Assets/mono.ico` icon and no “MKei” caption.
 
 ## Existing implementation notes
 
@@ -58,7 +58,7 @@ No runtime UI test was performed for this change. Confirm these behaviors when l
 - Closing to tray is limited to `CloseReason.UserClosing`; selecting Fully close allows the form to close normally.
 - The tray menu provides Open and Exit. Exit sets the internal closing flag to bypass hide-to-tray behavior.
 - Main capture/playback uses NAudio `WasapiCapture`, `WasapiOut`, and `BufferedWaveProvider`.
-- App routing/session enumeration has had prior NAudio collection and process-ID type issues; consult the current `AppRouterForm.cs` before changing that code.
+- App routing/session enumeration has had prior NAudio collection and process-ID type issues; consult `Forms/AppRouterForm.cs` before changing that code.
 
 ## Next work
 
