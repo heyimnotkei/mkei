@@ -41,7 +41,7 @@ namespace MKei
             this.MaximizeBox = false;
             this.Name = "MainForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "";
+            this.Text = "MKei";
             this.BackColor = Theme.Window;
             this.Font = Theme.Body;
 

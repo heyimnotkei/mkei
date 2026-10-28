@@ -104,6 +104,19 @@ namespace MKei
             appList.DrawItem += AppList_DrawItem;
             appList.DrawSubItem += AppList_DrawSubItem;
             appList.SelectedIndexChanged += AppSelected;
+            appList.MouseDown += (s, e) =>
+            {
+                if (e.Button == MouseButtons.Right && appList.HitTest(e.Location).Item is { } item && !item.Selected)
+                {
+                    appList.SelectedItems.Clear();
+                    item.Selected = true;
+                }
+            };
+            var contextMenu = new ContextMenuStrip();
+            contextMenu.Items.Add("Refresh", null, RefreshSelectedRouting);
+            contextMenu.Opening += (s, e) =>
+                contextMenu.Items[0].Enabled = appList.SelectedItems.Count > 0;
+            appList.ContextMenuStrip = contextMenu;
             card.Controls.Add(appList);
 
             var divider = new Panel { BackColor = Theme.Divider, Location = new Point(20, 276), Size = new Size(604, 1) };
@@ -452,6 +465,39 @@ namespace MKei
             // but if a given app doesn't pick it up until its next sound,
             // that's a Windows behavior, not a bug in this code.
             RefreshStatusForSelection();
+        }
+
+        void RefreshSelectedRouting(object? sender, EventArgs e)
+        {
+            var cable = FindCableDevice();
+            if (cable == null)
+            {
+                MessageBox.Show("VB Audio Cable not found");
+                return;
+            }
+
+            var failures = new List<string>();
+            foreach (var app in appList.SelectedItems.Cast<ListViewItem>().Select(i => (AudioApp)i.Tag))
+            {
+                if (!IsRoutedToCable(app.ProcessId, cable))
+                    continue;
+
+                try
+                {
+                    router.RestoreProcess((int)app.ProcessId);
+                    router.RouteProcess((int)app.ProcessId, cable.ID);
+                }
+                catch (Exception ex)
+                {
+                    failures.Add($"{app.Name}: {ex.GetType().Name}: {ex.Message}");
+                }
+            }
+
+            if (failures.Count > 0)
+                MessageBox.Show(string.Join("\n\n", failures), "Route refresh failed for some apps");
+
+            RefreshStatusForSelection();
+            appList.Invalidate();
         }
 
 
