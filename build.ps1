@@ -30,9 +30,12 @@ if (-not (Test-Path $publishedExe)) {
 }
 
 New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
-$buildId = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
-$releaseExe = Join-Path $releaseDir "$projName 3.0 build $buildId.exe"
-Copy-Item $publishedExe $releaseExe
+do {
+    $buildId = Get-Random -Minimum 1000000000 -Maximum 2147483647
+    $releaseExe = Join-Path $releaseDir "$projName $buildId.exe"
+} while (Test-Path $releaseExe)
+
+[System.IO.File]::Copy($publishedExe, $releaseExe, $false)
 
 Write-Host "Build complete. Executable: $publishedExe"
-Write-Host "Versioned release: $releaseExe"
+Write-Host "Build archive: $releaseExe"
